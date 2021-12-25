@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common'
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common'
+import { Response, Request } from 'express'
 
 import { AuthService } from './auth.service'
 import { Public, User } from './decorators'
@@ -14,30 +15,35 @@ export class AuthController {
   @Post('/local/signup')
   @UsePipes(new ValidationPipe())
   @HttpCode(HttpStatus.CREATED)
-  async signUpLocal(@Body('user') createUserDto: CreateUserDto): Promise<Tokens> {
-    return await this.authService.signUpLocal(createUserDto)
+  async signUpLocal(@Body('user') createUserDto: CreateUserDto) {
+    await this.authService.signUpLocal(createUserDto)
   }
 
   @Public()
   @Post('/local/signin')
   @UsePipes(new ValidationPipe())
   @HttpCode(HttpStatus.OK)
-  async signInLocal(@Body('user') loginUserDto: LoginUserDto): Promise<Tokens> {
-    return await this.authService.signInLocal(loginUserDto)
+  async signInLocal(@Body('user') loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response): Promise<Tokens> {
+    const tokens = await this.authService.signInLocal(loginUserDto)
+    res.cookie('refreshToken', tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
+    return tokens
   }
 
   @UseGuards(AtGuard)
   @Post('/logout')
   @HttpCode(HttpStatus.OK)
-  logout(@User('id') userId: number) {
-    return this.authService.logout(userId)
+  logout(@User('id') userId: number, @Res({ passthrough: true }) res: Response) {
+    this.authService.logout(userId)
+    res.clearCookie('refreshToken')
   }
 
   @Public()
   @UseGuards(RtGuard)
   @Post('/refresh')
   @HttpCode(HttpStatus.OK)
-  refreshTokens(@User() user: any): Promise<Tokens> {
-    return this.authService.refreshTokens(user.id, user.refreshToken)
+  async refreshTokens(@User() user: any, @Req() request: Request, @Res({ passthrough: true }) res: Response): Promise<Tokens> {
+    const tokens = await this.authService.refreshTokens(user.id, request.cookies.refreshToken)
+    res.cookie('refreshToken', tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
+    return tokens
   }
 }

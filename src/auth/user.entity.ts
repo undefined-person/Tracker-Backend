@@ -1,4 +1,4 @@
-import { hash } from 'bcrypt'
+import { hash } from 'argon2'
 import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 
 @Entity('users')
@@ -20,6 +20,6 @@ export class UserEntity {
 
   @BeforeInsert()
   async hashPassword() {
-    this.password = await hash(this.password, 10)
+    this.password = await hash(this.password)
   }
 }

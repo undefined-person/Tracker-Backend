@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { InjectRepository } from '@nestjs/typeorm'
-import { compare, hash } from 'bcrypt'
+import { verify, hash } from 'argon2'
 import { IsNull, Not, Repository } from 'typeorm'
 
 import { CreateUserDto, LoginUserDto } from './dto'
@@ -12,7 +12,7 @@ import { UserEntity } from './user.entity'
 export class AuthService {
   constructor(@InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>, private readonly jwtService: JwtService) {}
 
-  async signUpLocal(createUserDto: CreateUserDto): Promise<Tokens> {
+  async signUpLocal(createUserDto: CreateUserDto) {
     const userByEmail = await this.userRepo.findOne({ email: createUserDto.email })
     const userByUserName = await this.userRepo.findOne({ username: createUserDto.username })
 
@@ -27,8 +27,6 @@ export class AuthService {
     const tokens = await this.generateJWT(res.id, res.email)
 
     await this.updateRtHash(res.id, tokens.refreshToken)
-
-    return tokens
   }
 
   async signInLocal(loginUserDto: LoginUserDto): Promise<Tokens> {
@@ -38,7 +36,7 @@ export class AuthService {
       throw new HttpException('User is not exist', HttpStatus.UNPROCESSABLE_ENTITY)
     }
 
-    const isPasswordCorrect = await compare(loginUserDto.password, user.password)
+    const isPasswordCorrect = await verify(user.password, loginUserDto.password)
 
     if (!isPasswordCorrect) {
       throw new HttpException('Credentials are not valid', HttpStatus.UNPROCESSABLE_ENTITY)
@@ -61,7 +59,7 @@ export class AuthService {
       throw new HttpException('Access Denied', HttpStatus.UNAUTHORIZED)
     }
 
-    const rtMatches = await compare(rt, user.hashedRt)
+    const rtMatches = await verify(user.hashedRt, rt)
 
     if (!rtMatches) {
       throw new HttpException('Access Denied', HttpStatus.UNAUTHORIZED)
@@ -104,7 +102,7 @@ export class AuthService {
         },
         {
           secret: process.env.RT_SECRET,
-          expiresIn: 60 * 60 * 24 * 7,
+          expiresIn: 60 * 60 * 24 * 15,
         }
       ),
     ])
@@ -116,7 +114,7 @@ export class AuthService {
   }
 
   hashData(data: string) {
-    return hash(data, 10)
+    return hash(data)
   }
 
   async updateRtHash(userId: number, rt: string) {
