@@ -58,13 +58,13 @@ export class AuthService {
     })
 
     if (!user || !user.hashedRt) {
-      throw new HttpException('Access Denied', HttpStatus.FORBIDDEN)
+      throw new HttpException('Access Denied', HttpStatus.UNAUTHORIZED)
     }
 
     const rtMatches = await compare(rt, user.hashedRt)
 
     if (!rtMatches) {
-      throw new HttpException('Access Denied', HttpStatus.FORBIDDEN)
+      throw new HttpException('Access Denied', HttpStatus.UNAUTHORIZED)
     }
 
     const tokens = await this.generateJWT(user.id, user.email)
