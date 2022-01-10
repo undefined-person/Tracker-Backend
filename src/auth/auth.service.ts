@@ -91,7 +91,7 @@ export class AuthService {
           email,
         },
         {
-          secret: process.env.AT_SECRET,
+          secret: `${process.env.AT_SECRET}`,
           expiresIn: 60 * 15,
         }
       ),
@@ -101,7 +101,7 @@ export class AuthService {
           email,
         },
         {
-          secret: process.env.RT_SECRET,
+          secret: `${process.env.RT_SECRET}`,
           expiresIn: 60 * 60 * 24 * 15,
         }
       ),
