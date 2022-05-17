@@ -7,6 +7,7 @@ import { IsNull, Not, Repository } from 'typeorm'
 import { CreateUserDto, LoginUserDto } from './dto'
 import { Tokens } from './types'
 import { UserEntity } from './user.entity'
+import { IUserResponse } from "@app/auth/types/userResponse.interface";
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
     await this.updateRtHash(res.id, tokens.refreshToken)
   }
 
-  async signInLocal(loginUserDto: LoginUserDto): Promise<Tokens> {
+  async signInLocal(loginUserDto: LoginUserDto): Promise<IUserResponse> {
     const user = await this.userRepo.findOne({ email: loginUserDto.email }, { select: ['id', 'email', 'username', 'password'] })
 
     if (!user) {
@@ -41,14 +42,17 @@ export class AuthService {
     if (!isPasswordCorrect) {
       throw new HttpException('Credentials are not valid', HttpStatus.UNPROCESSABLE_ENTITY)
     }
+
     const tokens = await this.generateJWT(user.id, user.email)
 
     await this.updateRtHash(user.id, tokens.refreshToken)
 
-    return tokens
+    delete user.password
+
+    return { user: { user: { ...user }, tokens: { ...tokens } } }
   }
 
-  async refreshTokens(userId: number, rt: string): Promise<Tokens> {
+  async refreshTokens(userId: number, rt: string): Promise<IUserResponse> {
     const user = await this.userRepo.findOne({
       where: {
         id: userId,
@@ -69,7 +73,9 @@ export class AuthService {
 
     await this.updateRtHash(user.id, tokens.refreshToken)
 
-    return tokens
+    delete user.hashedRt
+
+    return { user: { user: { ...user }, tokens: { ...tokens } } }
   }
 
   async logout(userId: number) {

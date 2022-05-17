@@ -5,7 +5,7 @@ import { AuthService } from './auth.service'
 import { Public, User } from './decorators'
 import { CreateUserDto, LoginUserDto } from './dto'
 import { AtGuard, RtGuard } from './guards'
-import { Tokens } from './types'
+import { IUserResponse } from "@app/auth/types/userResponse.interface";
 
 @Controller('auth')
 export class AuthController {
@@ -23,10 +23,10 @@ export class AuthController {
   @Post('/local/signin')
   @UsePipes(new ValidationPipe())
   @HttpCode(HttpStatus.OK)
-  async signInLocal(@Body('user') loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response): Promise<Tokens> {
-    const tokens = await this.authService.signInLocal(loginUserDto)
-    res.cookie('refreshToken', tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
-    return tokens
+  async signInLocal(@Body('user') loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response): Promise<IUserResponse> {
+    const { user } = await this.authService.signInLocal(loginUserDto)
+    res.cookie('refreshToken', user.tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
+    return { user }
   }
 
   @UseGuards(AtGuard)
@@ -41,9 +41,9 @@ export class AuthController {
   @UseGuards(RtGuard)
   @Post('/refresh')
   @HttpCode(HttpStatus.OK)
-  async refreshTokens(@User() user: any, @Req() request: Request, @Res({ passthrough: true }) res: Response): Promise<Tokens> {
-    const tokens = await this.authService.refreshTokens(user.id, request.cookies.refreshToken)
-    res.cookie('refreshToken', tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
-    return tokens
+  async refreshTokens(@User() currentUser: any, @Req() request: Request, @Res({ passthrough: true }) res: Response): Promise<IUserResponse> {
+    const { user } = await this.authService.refreshTokens(currentUser.id, request.cookies.refreshToken)
+    res.cookie('refreshToken', user.tokens.refreshToken, { maxAge: 60 * 60 * 24 * 15, httpOnly: true, path: '/auth/refresh' })
+    return { user }
   }
 }

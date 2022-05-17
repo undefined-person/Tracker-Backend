@@ -1,4 +1,4 @@
-export interface ITop250 {
+export interface ITop250Full {
   id: string
   rank: string
   title: string
@@ -10,6 +10,8 @@ export interface ITop250 {
   imDbRatingCount: string
 }
 
+export type ITop250 = Omit<ITop250Full, 'crew' | 'imDbRatingCount' | 'fullTitle'>
+
 export interface ITop250AxiosResponse {
-  items: Array<ITop250>
+  items: Array<ITop250Full>
 }
